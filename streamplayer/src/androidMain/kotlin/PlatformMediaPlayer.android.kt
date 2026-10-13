@@ -11,9 +11,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import kotlinx.coroutines.flow.filterNotNull
 
 private const val POLL_INTERVAL_MS = 1000L // 1 second
@@ -51,6 +53,7 @@ actual class PlatformMediaPlayer actual constructor() {
 
     private val _state = MutableStateFlow(PlaybackState.STOPPED)
     private val _progress = MutableStateFlow<Progress?>(null)
+    private val _metadata = MutableStateFlow<StreamMetadata?>(null)
 
     // <editor-fold desc="Initialization">
     init {
@@ -89,11 +92,16 @@ actual class PlatformMediaPlayer actual constructor() {
             override fun onPlayerError(error: PlaybackException) {
                 _state.value = PlaybackState.ERROR
             }
+
+            override fun onMetadata(metadata: Metadata) {
+                metadata.toStreamMetadata()?.let { _metadata.value = it }
+            }
         })
     }
     // </editor-fold>
 
     actual fun playItem(mediaPlayerItem: MediaPlayerItem) {
+        _metadata.value = StreamMetadata(null, null)
         val metadata = MediaMetadata.Builder()
             .setTitle(mediaPlayerItem.title)
             .setArtist(mediaPlayerItem.artist)
@@ -124,6 +132,7 @@ actual class PlatformMediaPlayer actual constructor() {
     actual fun stop() {
         exoPlayer.stop()
         _state.value = PlaybackState.STOPPED
+        _metadata.value = StreamMetadata(null, null)
         handler.removeCallbacks(updateProgressRunnable)
         appContext.stopService(Intent(appContext, MediaPlayerService::class.java))
     }
@@ -152,10 +161,32 @@ actual class PlatformMediaPlayer actual constructor() {
         }
     }
 
+    actual fun subscribeMetadata(callback: (StreamMetadata) -> Unit) {
+        coroutineScope.launch {
+            _metadata.filterNotNull().collect { metadata ->
+                callback(metadata)
+            }
+        }
+    }
+
     // Release ExoPlayer resources
     fun release() {
         exoPlayer.release()
         handler.removeCallbacksAndMessages(null)
         coroutineScope.cancel()
     }
+}
+
+/** Maps ID3 `TIT2`/`TPE1` frames to [StreamMetadata]; null when neither is present. */
+internal fun Metadata.toStreamMetadata(): StreamMetadata? {
+    var title: String? = null
+    var artist: String? = null
+    for (i in 0 until length()) {
+        val frame = get(i) as? TextInformationFrame ?: continue
+        when (frame.id) {
+            "TIT2" -> title = frame.values.firstOrNull()
+            "TPE1" -> artist = frame.values.firstOrNull()
+        }
+    }
+    return if (title == null && artist == null) null else StreamMetadata(title, artist)
 }

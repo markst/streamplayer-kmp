@@ -31,4 +31,10 @@ actual class PlatformMediaPlayer actual constructor() : MediaPlayController() {
             callback(Progress(elapsed, duration))
         }
     }
+
+    actual fun subscribeMetadata(callback: (StreamMetadata) -> Unit) {
+        subscribeMetadataWithCallback { title, artist ->
+            callback(StreamMetadata(title, artist))
+        }
+    }
 }
