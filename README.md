@@ -69,3 +69,17 @@ Add the KMP framework to your Xcode project, then use `PlatformMediaPlayer` dire
 let player = PlatformMediaPlayer()
 player.playItem(mediaPlayerItem: myItem)
 ```
+
+### Stream metadata
+
+Subscribe to live now-playing metadata (HLS timed ID3 `TIT2` title / `TPE1` artist):
+
+```kotlin
+player.subscribeMetadata { meta ->
+    // meta.title, meta.artist
+}
+```
+
+`StreamMetadata(title = null, artist = null)` is emitted when a new item starts or playback stops, so stale text from the previous stream can be cleared. Repeated identical tags are not re-emitted.
+
+On iOS, in-stream metadata comes from an `AVPlayerItemMetadataOutput`, so it only appears when AVFoundation surfaces the ID3 tags. For packed-audio (`.aac`) HLS, that means a separate ID3 tag after the segment's leading `transportStreamTimestamp` tag (e.g. iHeart streams). Streams that put `TIT2`/`TPE1` inside the leading timestamp tag (e.g. StreamTheWorld) don't report in-stream metadata on iOS.
