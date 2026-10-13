@@ -173,6 +173,25 @@ import Combine
             .eraseToAnyPublisher()
     }()
 
+    /// Emits `.empty` when the item changes or is cleared, then each ID3 title/artist update.
+    /// Fed by `AVPlayerItemMetadataOutput` (see `CustomAVPlayerItem`).
+    public lazy var timedMetadata: AnyPublisher<TimedMetadata, Never> = {
+        player
+            .publisher(for: \.currentItem)
+            .map { item -> AnyPublisher<TimedMetadata, Never> in
+                guard let item = item as? CustomAVPlayerItem else {
+                    return Just(TimedMetadata.empty).eraseToAnyPublisher()
+                }
+                return item.pushedMetadata
+                    .prepend(.empty)
+                    .eraseToAnyPublisher()
+            }
+            .switchToLatest()
+            .removeDuplicates()
+            .share()
+            .eraseToAnyPublisher()
+    }()
+
     // MARK: - Playback Controls
 
     @objc public func play(url: URL) {
@@ -258,6 +277,13 @@ import Combine
 
     @objc public func subscribeState(callback: @escaping (StreamPlayerState) -> Void) {
         state
+            .sink(receiveValue: callback)
+            .store(in: &cancellables)
+    }
+
+    @objc public func subscribeMetadata(callback: @escaping (_ title: String?, _ artist: String?) -> Void) {
+        timedMetadata
+            .map { ($0.title, $0.artist) }
             .sink(receiveValue: callback)
             .store(in: &cancellables)
     }
