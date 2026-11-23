@@ -1,5 +1,5 @@
 [versions]
-agp = "9.0.1"
+agp = "9.5.0"
 kotlin = "2.4.10"
 kotlinx = "1.11.0"
 mavenPublish = "0.36.0"
