@@ -15,7 +15,11 @@ public class NowPlayingInfo: NSObject {
     var artwork: PlatformImage?
     var artworkURL: URL?
     var duration: Double?
-    
+
+    /// Live stream (internet radio). Takes precedence over the reported duration: servers that answer range
+    /// requests make AVPlayer report a large finite duration for a live stream.
+    @objc public var isLive = false
+
     public init(title: String, artist: String? = nil, artwork: PlatformImage? = nil, duration: Double? = nil) {
         self.title = title
         self.artist = artist
@@ -96,7 +100,8 @@ public class NowPlayingInfoCenter {
         }
 
         var nowPlayingInfo = [String: Any]()
-        let duration = (progress.duration.isNaN || progress.duration <= 0) == false ? progress.duration : info.duration
+        let duration = info.isLive ? nil
+            : (progress.duration.isNaN || progress.duration <= 0) == false ? progress.duration : info.duration
         nowPlayingInfo[MPNowPlayingInfoPropertyIsLiveStream] = duration == nil
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = progress.progress
         nowPlayingInfo[MPNowPlayingInfoPropertyMediaType] = NSNumber(value: MPNowPlayingInfoMediaType.audio.rawValue)

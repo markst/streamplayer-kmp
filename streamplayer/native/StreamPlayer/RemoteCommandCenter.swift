@@ -2,6 +2,7 @@ import Foundation
 #if os(iOS)
 import UIKit
 #endif
+import Combine
 import MediaPlayer
 
 class RemoteCommandCenter {
@@ -17,12 +18,25 @@ class RemoteCommandCenter {
     }
     @Published
     private var state: StreamPlayerState = .stopped
+    private var cancellables: Set<AnyCancellable> = []
     
     // MARK: - Init
     
-    init(streamPlayer: StreamPlayerType) {
+    init(streamPlayer: StreamPlayerType, nowPlayingInfo: AnyPublisher<NowPlayingInfo?, Never>) {
         self.streamPlayer = streamPlayer
         self.streamPlayer.state.assign(to: &$state)
+
+        // Skip and seek only make sense for items with a duration that are not live streams.
+        // Servers that answer range requests (most Icecast) make AVPlayer report a large finite
+        // duration for a live stream, so `NowPlayingInfo.isLive` takes precedence over it.
+        Publishers.CombineLatest(
+            streamPlayer.playProgress.map { $0.duration > 0 },
+            nowPlayingInfo.map { $0?.isLive ?? false }
+        )
+        .map { hasDuration, isLive in hasDuration && !isLive }
+        .removeDuplicates()
+        .sink { [weak self] seekable in self?.setSeekingEnabled(seekable) }
+        .store(in: &cancellables)
 
         setupRemoteCommandCenter()
     }
@@ -120,6 +134,11 @@ class RemoteCommandCenter {
     }
     
     /// Toggle the skip buttons visibility, such as when live stream.
+    private func setSeekingEnabled(_ enabled: Bool) {
+        skip(enabled: enabled)
+        MPRemoteCommandCenter.shared().changePlaybackPositionCommand.isEnabled = enabled
+    }
+
     func skip(enabled: Bool) {
         let remoteCommandCenter = MPRemoteCommandCenter.shared()
         remoteCommandCenter.skipForwardCommand.isEnabled = enabled

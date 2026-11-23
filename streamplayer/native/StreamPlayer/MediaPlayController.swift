@@ -37,7 +37,8 @@ import Combine
 
     private func configure(artworkResolver: ArtworkResolving) {
         self.remoteCommandCenter = .init(
-            streamPlayer: self
+            streamPlayer: self,
+            nowPlayingInfo: $nowPlayingInfo.eraseToAnyPublisher()
         )
         self.nowPlayingInfoCenter = .init(
             streamPlayer: self,
