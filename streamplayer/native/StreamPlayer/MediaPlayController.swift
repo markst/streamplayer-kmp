@@ -10,6 +10,13 @@ import Combine
     @Published
     internal var nowPlayingInfo: NowPlayingInfo?
 
+    /// Sent as the `User-Agent` request header of every stream played from now on. Some radio
+    /// servers reject requests without one.
+    @objc public var userAgent: String?
+
+    /// Forward buffer to aim for in seconds; 0 keeps the system default.
+    @objc public var forwardBufferSeconds: Double = 0
+
     /// Lock-screen / headphone next- and previous-track buttons. Set these to let the app switch
     /// between streams; the buttons are hidden while they are nil.
     @objc public var onNextTrack: (() -> Void)? {
@@ -234,7 +241,12 @@ import Combine
         debugPrint(#function, url, position as Any)
         activateAudioSession()
 
-        let playerItem = CustomAVPlayerItem(url: url, info: info)
+        let playerItem = CustomAVPlayerItem(
+            url: url,
+            info: info,
+            userAgent: userAgent,
+            preferredForwardBufferDuration: forwardBufferSeconds
+        )
         player.replaceCurrentItem(with: playerItem)
 
         if let startTime = position?.doubleValue {
