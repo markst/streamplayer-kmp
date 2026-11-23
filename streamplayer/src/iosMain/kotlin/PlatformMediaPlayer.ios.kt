@@ -9,7 +9,13 @@ import kotlinx.cinterop.ExperimentalForeignApi
 @OptIn(ExperimentalForeignApi::class)
 actual class PlatformMediaPlayer actual constructor() : MediaPlayController() {
     actual fun playItem(mediaPlayerItem: MediaPlayerItem) {
-        playWithUrl(mediaPlayerItem.url.toNSURL(), at = null)
+        playWithUrl(
+            url = mediaPlayerItem.url.toNSURL(),
+            title = mediaPlayerItem.title,
+            artist = mediaPlayerItem.artist,
+            artworkURL = mediaPlayerItem.artworkUrl?.toNSURL(),
+            isLive = mediaPlayerItem.isLive
+        )
     }
 
     actual fun subscribeState(callback: (PlaybackState) -> Unit) {

@@ -237,6 +237,15 @@ import Combine
         self.play(url: url, at: nil, info: nil)
     }
 
+    /// Plain-types overload for callers that cannot construct a `NowPlayingInfo` (Kotlin).
+    /// `artist` is shown as the subtitle; `isLive` hides skip/seek and the progress bar.
+    @objc public func play(url: URL, title: String, artist: String?, artworkURL: URL?, isLive: Bool) {
+        let info = artworkURL.map { NowPlayingInfo(title: title, artist: artist, artworkURL: $0) }
+            ?? NowPlayingInfo(title: title, artist: artist)
+        info.isLive = isLive
+        play(url: url, at: nil, info: info)
+    }
+
     @objc public func play(url: URL, at position: NSNumber? = nil, info: NowPlayingInfo? = nil) {
         debugPrint(#function, url, position as Any)
         activateAudioSession()
@@ -275,6 +284,16 @@ import Combine
         debugPrint(#function)
         player.pause()
         player.replaceCurrentItem(with: nil)
+        nowPlayingInfo = nil
+    }
+
+    /// Updates the track text shown on the lock screen (the station name and artwork stay).
+    @objc public func updateNowPlaying(subtitle: String?) {
+        guard let info = nowPlayingInfo else { return }
+        let updated = NowPlayingInfo(title: info.title, artist: subtitle, artwork: info.artwork, duration: info.duration)
+        updated.artworkURL = info.artworkURL
+        updated.isLive = info.isLive
+        updateNowPlaying(updated)
     }
 
     /// Replaces the Now Playing info for the current item, e.g. when live stream metadata changes.
