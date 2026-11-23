@@ -9,6 +9,15 @@ import Combine
     internal var nowPlayingInfoCenter: NowPlayingInfoCenter?
     @Published
     internal var nowPlayingInfo: NowPlayingInfo?
+
+    /// Lock-screen / headphone next- and previous-track buttons. Set these to let the app switch
+    /// between streams; the buttons are hidden while they are nil.
+    @objc public var onNextTrack: (() -> Void)? {
+        didSet { remoteCommandCenter?.onNextTrack = onNextTrack }
+    }
+    @objc public var onPreviousTrack: (() -> Void)? {
+        didSet { remoteCommandCenter?.onPreviousTrack = onPreviousTrack }
+    }
     
     // MARK: - Init
 
@@ -193,7 +202,6 @@ import Combine
     }()
 
     /// Emits `.empty` when the item changes or is cleared, then each ID3 title/artist update.
-    /// Fed by `AVPlayerItemMetadataOutput` (see `CustomAVPlayerItem`).
     public lazy var timedMetadata: AnyPublisher<TimedMetadata, Never> = {
         player
             .publisher(for: \.currentItem)
