@@ -321,7 +321,19 @@ import Combine
             .store(in: &cancellables)
     }
 
-    @objc public func cancelSubscriptios() {
+    /// Playback failures: the `NSError` code (e.g. -11828 "cannot open", usually an unsupported
+    /// stream format) and its localized description.
+    @objc public func subscribeError(callback: @escaping (_ code: Int, _ message: String) -> Void) {
+        errorPublisher
+            .map { error -> (Int, String) in
+                let nsError = error as NSError
+                return (nsError.code, nsError.localizedDescription)
+            }
+            .sink { callback($0.0, $0.1) }
+            .store(in: &cancellables)
+    }
+
+    @objc public func cancelSubscriptions() {
         cancellables.removeAll()
     }
 }
