@@ -151,8 +151,9 @@ import Combine
                             .periodicTimePublisher()
                             .prepend(.zero),
                         item.publisher(for: \.duration)
-                            .filter { $0.isValidCMTime }
-                            .compactMap { $0 }
+                            // Live streams report an indefinite duration; treat it as 0 so progress,
+                            // and therefore Now Playing, still publishes.
+                            .map { $0.isValidCMTime ? $0 : .zero }
                     )
                     .map {
                         Progress(
