@@ -1,16 +1,22 @@
 import AVFoundation
 import MediaPlayer
 import Combine
-import UIKit.UIImage
+#if canImport(UIKit)
+import UIKit
+public typealias PlatformImage = UIImage
+#else
+import AppKit
+public typealias PlatformImage = NSImage
+#endif
 
 public class NowPlayingInfo: NSObject {
     var title: String
     var artist: String?
-    var artwork: UIImage?
+    var artwork: PlatformImage?
     var artworkURL: URL?
     var duration: Double?
     
-    public init(title: String, artist: String? = nil, artwork: UIImage? = nil, duration: Double? = nil) {
+    public init(title: String, artist: String? = nil, artwork: PlatformImage? = nil, duration: Double? = nil) {
         self.title = title
         self.artist = artist
         self.artwork = artwork
@@ -31,7 +37,7 @@ public class NowPlayingInfoCenter {
     internal var cancellables: Set<AnyCancellable> = []
     private let artworkResolver: ArtworkResolving
     /// Last resolved image. One slot is enough: live metadata refreshes repeat the same artwork.
-    private var resolvedArtwork: (url: URL, image: UIImage)?
+    private var resolvedArtwork: (url: URL, image: PlatformImage)?
     /// URL most recently requested; never cleared, so a failing URL isn't retried on every refresh.
     private var requestedArtworkURL: URL?
     private var artworkCancellable: AnyCancellable?
@@ -110,7 +116,7 @@ public class NowPlayingInfoCenter {
 
     // MARK: - Artwork
 
-    private func artwork(for info: NowPlayingInfo) -> UIImage? {
+    private func artwork(for info: NowPlayingInfo) -> PlatformImage? {
         if let image = info.artwork { return image }
         guard let url = info.artworkURL else { return nil }
         if let resolved = resolvedArtwork, resolved.url == url { return resolved.image }

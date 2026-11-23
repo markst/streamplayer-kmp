@@ -61,6 +61,7 @@ import Combine
     // without exposing the mutable AVQueuePlayer internals.
     @objc public var avPlayer: AVPlayer { player }
 
+#if os(iOS)
     private var audioSession: AVAudioSession {
         AVAudioSession.sharedInstance()
     }
@@ -81,6 +82,11 @@ import Combine
             print("Error in deactivating audio session: \(error)")
         }
     }
+#else
+    // macOS has no AVAudioSession; the system arbitrates audio output.
+    func activateAudioSession() {}
+    func deactivateAudioSession() {}
+#endif
 
     // MARK: - StreamPlayerType
 
@@ -249,6 +255,11 @@ import Combine
         player.replaceCurrentItem(with: nil)
     }
 
+    /// Replaces the Now Playing info for the current item, e.g. when live stream metadata changes.
+    @objc public func updateNowPlaying(_ info: NowPlayingInfo?) {
+        nowPlayingInfo = info
+    }
+
     @objc public func togglePlaying() {
         debugPrint(#function)
         if player.rate != 0 {
@@ -307,6 +318,7 @@ import Combine
 
 // MARK: - Notifications
 
+#if os(iOS)
 extension MediaPlayController {
     func setupNotifications() {
         let notificationCenter = NotificationCenter.default
@@ -360,3 +372,9 @@ extension MediaPlayController {
         }
     }
 }
+#else
+
+extension MediaPlayController {
+    func setupNotifications() {}
+}
+#endif

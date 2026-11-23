@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 import MediaPlayer
 
 class RemoteCommandCenter {
@@ -26,11 +29,15 @@ class RemoteCommandCenter {
         remoteCommandCenter.skipBackwardCommand.removeTarget(self)
         remoteCommandCenter.changePlaybackPositionCommand.removeTarget(self)
         
+#if os(iOS)
         UIApplication.shared.endReceivingRemoteControlEvents()
+#endif
     }
     
     func setupRemoteCommandCenter() {
+#if os(iOS)
         UIApplication.shared.beginReceivingRemoteControlEvents() /// Required for `MPNowPlayingInfoCenter`
+#endif
 
         let remoteCommandCenter = MPRemoteCommandCenter.shared()
         remoteCommandCenter.togglePlayPauseCommand.isEnabled = true

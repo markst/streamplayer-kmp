@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "StreamPlayer",
-    platforms: [.iOS(.v14)],
+    platforms: [.iOS(.v14), .macOS(.v13)],
     products: [
         .library(
             name: "StreamPlayer",

@@ -1,3 +1,4 @@
+#if os(iOS)
 import AVFoundation
 import UIKit
 
@@ -18,3 +19,4 @@ public final class PlayerLayerView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
 }
+#endif
