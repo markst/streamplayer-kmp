@@ -16,12 +16,24 @@ import Combine
         self.player = AVQueuePlayer()
 
         super.init()
+        configure(artworkResolver: URLSessionArtworkResolver())
+    }
+
+    public init(artworkResolver: ArtworkResolving) {
+        self.player = AVQueuePlayer()
+
+        super.init()
+        configure(artworkResolver: artworkResolver)
+    }
+
+    private func configure(artworkResolver: ArtworkResolving) {
         self.remoteCommandCenter = .init(
             streamPlayer: self
         )
         self.nowPlayingInfoCenter = .init(
             streamPlayer: self,
-            publisher: $nowPlayingInfo.eraseToAnyPublisher()
+            publisher: $nowPlayingInfo.eraseToAnyPublisher(),
+            artworkResolver: artworkResolver
         )
 
         setupNotifications()

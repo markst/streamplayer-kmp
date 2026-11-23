@@ -83,3 +83,13 @@ player.subscribeMetadata { meta ->
 `StreamMetadata(title = null, artist = null)` is emitted when a new item starts or playback stops, so stale text from the previous stream can be cleared. Repeated identical tags are not re-emitted.
 
 On iOS, in-stream metadata comes from an `AVPlayerItemMetadataOutput`, so it only appears when AVFoundation surfaces the ID3 tags. For packed-audio (`.aac`) HLS, that means a separate ID3 tag after the segment's leading `transportStreamTimestamp` tag (e.g. iHeart streams). Streams that put `TIT2`/`TPE1` inside the leading timestamp tag (e.g. StreamTheWorld) don't report in-stream metadata on iOS.
+
+### Now Playing artwork
+
+Pass an `artworkURL` and the player fetches the image asynchronously, publishing the text to Now Playing immediately and the artwork once it arrives:
+
+```swift
+player.play(url: stream, at: nil, info: NowPlayingInfo(title: "Show", artist: "Station", artworkURL: logoURL))
+```
+
+Fetching goes through an `ArtworkResolving`. The default, `URLSessionArtworkResolver`, uses `URLSession.shared` and its HTTP cache. Inject your own with `MediaPlayController(artworkResolver:)`. The `artwork:` image parameter still works and skips the resolver.

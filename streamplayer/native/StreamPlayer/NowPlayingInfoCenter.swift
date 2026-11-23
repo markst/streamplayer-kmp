@@ -7,6 +7,7 @@ public class NowPlayingInfo: NSObject {
     var title: String
     var artist: String?
     var artwork: UIImage?
+    var artworkURL: URL?
     var duration: Double?
     
     public init(title: String, artist: String? = nil, artwork: UIImage? = nil, duration: Double? = nil) {
@@ -15,17 +16,35 @@ public class NowPlayingInfo: NSObject {
         self.artwork = artwork
         self.duration = duration
     }
+
+    /// Artwork is fetched asynchronously by the player's `ArtworkResolving`; Now Playing
+    /// shows the text immediately and the image once it arrives.
+    public init(title: String, artist: String? = nil, artworkURL: URL, duration: Double? = nil) {
+        self.title = title
+        self.artist = artist
+        self.artworkURL = artworkURL
+        self.duration = duration
+    }
 }
 
 public class NowPlayingInfoCenter {
     internal var cancellables: Set<AnyCancellable> = []
+    private let artworkResolver: ArtworkResolving
+    /// Last resolved image. One slot is enough: live metadata refreshes repeat the same artwork.
+    private var resolvedArtwork: (url: URL, image: UIImage)?
+    /// URL most recently requested; never cleared, so a failing URL isn't retried on every refresh.
+    private var requestedArtworkURL: URL?
+    private var artworkCancellable: AnyCancellable?
+    private var latest: (info: NowPlayingInfo?, state: StreamPlayerState, progress: Progress)?
     
     // MARK: - Init
     
     public init(
         streamPlayer: StreamPlayerType,
-        publisher: AnyPublisher<NowPlayingInfo?, Never>
+        publisher: AnyPublisher<NowPlayingInfo?, Never>,
+        artworkResolver: ArtworkResolving = URLSessionArtworkResolver()
     ) {
+        self.artworkResolver = artworkResolver
         Publishers
             .CombineLatest4(
                 streamPlayer.state,
@@ -64,6 +83,7 @@ public class NowPlayingInfoCenter {
     
     func updateNowPlaying(info: NowPlayingInfo?, state: StreamPlayerState, progress: Progress) {
         debugPrint(#function, info as Any, state, progress)
+        latest = (info, state, progress)
         guard let info else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             return
@@ -78,7 +98,7 @@ public class NowPlayingInfoCenter {
         nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
         nowPlayingInfo[MPMediaItemPropertyTitle] = info.title
         nowPlayingInfo[MPMediaItemPropertyArtist] = info.artist
-        nowPlayingInfo[MPMediaItemPropertyArtwork] = info.artwork.map { image in
+        nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork(for: info).map { image in
             MPMediaItemArtwork(
                 boundsSize: image.size,
                 requestHandler: { _ in image }
@@ -86,6 +106,30 @@ public class NowPlayingInfoCenter {
         }
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+
+    // MARK: - Artwork
+
+    private func artwork(for info: NowPlayingInfo) -> UIImage? {
+        if let image = info.artwork { return image }
+        guard let url = info.artworkURL else { return nil }
+        if let resolved = resolvedArtwork, resolved.url == url { return resolved.image }
+        resolveArtwork(at: url)
+        return nil
+    }
+
+    private func resolveArtwork(at url: URL) {
+        guard requestedArtworkURL != url else { return }
+        requestedArtworkURL = url
+        // Replacing the subscription cancels any request still in flight for a previous URL.
+        artworkCancellable = artworkResolver.image(for: url)
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] image in
+                guard let self, let latest, latest.info?.artworkURL == url else { return }
+                resolvedArtwork = (url, image)
+                updateNowPlaying(info: latest.info, state: latest.state, progress: latest.progress)
+            }
     }
 }
 
