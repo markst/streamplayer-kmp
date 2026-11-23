@@ -93,3 +93,15 @@ player.play(url: stream, at: nil, info: NowPlayingInfo(title: "Show", artist: "S
 ```
 
 Fetching goes through an `ArtworkResolving`. The default, `URLSessionArtworkResolver`, uses `URLSession.shared` and its HTTP cache. Inject your own with `MediaPlayController(artworkResolver:)`. The `artwork:` image parameter still works and skips the resolver.
+
+### Live radio on iOS
+
+For internet-radio streams, `PlatformMediaPlayer.playItem(item)` on iOS now uses the item's `title`, `artist` (shown as the track subtitle) and `artworkUrl` for Now Playing, and `isLive` (live streams get no skip/seek buttons or progress bar on the lock screen). Also available from the Swift `MediaPlayController`:
+
+- `userAgent` — sent as the `User-Agent` header of streams played afterwards (some radio servers reject requests without one).
+- `forwardBufferSeconds` — preferred forward buffer; 0 keeps the system default.
+- `onNextTrack` / `onPreviousTrack` — handlers for the lock-screen / headphone buttons; the buttons appear only while a handler is set.
+- `updateNowPlaying(subtitle:)` — sets the track text on the lock screen, keeping the title and artwork.
+- `subscribeError(callback)` — `NSError` code and message for playback failures.
+
+Current track: AVPlayer treats most Shoutcast/Icecast servers as seekable files and never surfaces their in-band ICY metadata, so it only reports HLS/ID3 metadata through `subscribeMetadata`. Apps that need ICY titles for those servers should read them themselves and publish them with `updateNowPlaying(subtitle:)`.
